@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQ1 スクランブル変換ツール</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .card {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 550px;
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+            font-size: 1.25rem;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+            font-size: 0.9rem;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+            font-family: monospace;
+        }
+        input[type="text"]:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+        .output-box {
+            background-color: #f8f9fa;
+            border: 2px dashed #007bff;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 1.1rem;
+            min-height: 24px;
+            word-break: break-all;
+            color: #222;
+        }
+        .btn-copy {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.2s;
+        }
+        .btn-copy:hover {
+            background-color: #0056b3;
+        }
+        .note {
+            margin-top: 15px;
+            font-size: 0.8rem;
+            color: #777;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>SQ1 スクランブル変換ツール</h2>
+    
+    <div class="input-group">
+        <label for="sqInput">略記入力をセット</label>
+        <input type="text" id="sqInput" placeholder="例: eccoo32dccbccccododoobbo" oninput="convertSQ1()">
+    </div>
+
+    <div class="input-group">
+        <label>変換結果</label>
+        <div id="sqOutput" class="output-box"></div>
+        <button class="btn-copy" onclick="copyResult()">結果をコピー</button>
+    </div>
+
+    <div class="note">
+        ・アルファベットマッピング: a=-1, b=-2, c=-3, d=-4, e=-5<br>
+        ・<code>o</code> と <code>0</code> はどちらも <code>0</code> として扱われます。<br>
+        ・スペースなしの連続入力（例: <code>eccoo32...</code>）に完全対応しています。<br>
+        ・末尾に <code>00</code> または <code>oo</code> がある場合は最後に <code>/</code> を付与します。
+    </div>
+</div>
+
+<script>
+    // アルファベットと数値の対応表
+    const charMap = {
+        'a': '-1',
+        'b': '-2',
+        'c': '-3',
+        'd': '-4',
+        'e': '-5'
+    };
+
+    function convertSQ1() {
+        const inputEl = document.getElementById('sqInput');
+        const outputEl = document.getElementById('sqOutput');
+        let rawInput = inputEl.value.trim();
+
+        if (!rawInput) {
+            outputEl.textContent = '';
+            return;
+        }
+
+        // 1. 'o' または 'O' をすべて数字の '0' に置換
+        rawInput = rawInput.replace(/o/gi, '0');
+
+        // 2. 末尾00フラグの判定
+        const hasEndSlash = rawInput.endsWith("00");
+
+        // 末尾の 00 を除外して処理
+        let dataStr = hasEndSlash ? rawInput.slice(0, -2) : rawInput;
+
+        // 3. 1文字ずつ走査・マッピングして数値トークン化
+        const tokens = [];
+        for (let i = 0; i < dataStr.length; i++) {
+            const char = dataStr[i].toLowerCase();
+            if (charMap[char] !== undefined) {
+                // a~eのアルファベット変換
+                tokens.push(charMap[char]);
+            } else if (/\d/.test(char)) {
+                // 数字 (0~9)
+                tokens.push(char);
+            }
+            // 空白や対象外の記号はスキップ
+        }
+
+        if (tokens.length === 0) {
+            outputEl.textContent = '';
+            return;
+        }
+
+        // 4. ペア構築 (Top, Bottom)
+        const pairs = [];
+        for (let i = 0; i < tokens.length; i += 2) {
+            const top = tokens[i];
+            const bottom = tokens[i + 1] !== undefined ? tokens[i + 1] : "0";
+            pairs.push(`(${top},${bottom})`);
+        }
+
+        // 5. 結果の結合とスラッシュ付与
+        let result = pairs.join(" / ");
+        if (hasEndSlash) {
+            result += " /";
+        }
+
+        outputEl.textContent = result;
+    }
+
+    function copyResult() {
+        const text = document.getElementById('sqOutput').textContent;
+        if (!text) return;
+
+        navigator.clipboard.writeText(text).then(() => {
+            alert('コピーしました！');
+        }).catch(err => {
+            console.error('コピー失敗:', err);
+        });
+    }
+</script>
+
+</body>
+</html>
